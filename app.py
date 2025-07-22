@@ -1,6 +1,5 @@
 import streamlit as st
 import pyttsx3
-import speech_recognition as sr
 import os
 import base64
 import sys
