@@ -8,6 +8,7 @@ import time
 from traductor_kichwa.main import traducir_oracion, normalizar_texto
 from PIL import Image
 from streamlit.components.v1 import html
+from traductor_kichwa.db.consultas import buscar_todas_traducciones
 
 # === FUNCIONES DE AUDIO ===
 @st.cache_resource
@@ -196,6 +197,42 @@ label[data-testid="stMarkdownContainer"] > div, .stTextArea label {
 </style>
 """, unsafe_allow_html=True)
 
+# Cambios de estilos para color de texto y tamaño de labels
+st.markdown("""
+<style>
+.stTextArea textarea, .stTextInput input {
+    color: #000000 !important;
+}
+.stTextArea textarea::placeholder {
+    color: #000000 !important;
+    opacity: 1 !important;
+}
+label[data-testid="stMarkdownContainer"] > div, .stTextArea label {
+    color: #9E693E !important;
+    font-size: 1.45em !important;
+    font-weight: bold !important;
+}
+.stTextArea label[for="texto_entrada_area"],
+.stTextArea label[for="texto_entrada_area"] > div,
+.stTextArea label[for="texto_entrada_area"] * {
+    color: #9E693E !important;
+    font-size: 3em !important;
+    font-weight: bold !important;
+    line-height: 1.1 !important;
+    text-align: center !important;
+    width: 100% !important;
+    display: block !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+}
+.stTextArea label[for="traduccion_area"] {
+    color: #9E693E !important;
+    font-size: 1.45em !important;
+    font-weight: bold !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # Layout con imágenes a los costados
 col_izq, col_centro, col_der = st.columns([0.5, 7, 0.5])
 
@@ -250,19 +287,40 @@ with col_centro:
 
     # Cuadro de entrada de texto y botones juntos, usando Streamlit y CSS mejorado
     st.markdown('<div style="max-width:400px; margin:0 auto;">', unsafe_allow_html=True)
+    st.markdown(
+        '<div style="color:#9E693E; font-size:2em; font-weight:bold; text-align:center; margin-bottom:0.2em;">'
+        'Ingresa la oración o palabra a traducir:'
+        '</div>',
+        unsafe_allow_html=True
+    )
     texto_entrada = st.text_area(
-        "Ingresa el texto a traducir:",
+        label="",  # Sin label nativo
         value=st.session_state["texto_entrada"],
         height=80,
         max_chars=500,
         placeholder="Escribe aquí tu texto...",
         key="texto_entrada_area"
     )
-    col_btn_trad, col_btn_voz = st.columns([1, 1], gap="small")
+    col_btn_trad, col_btn_voz, col_btn_multi = st.columns([1, 1, 1], gap="small")
     with col_btn_trad:
-        btn_traducir = st.button("🔄 Traducir", key="btn_traducir", use_container_width=True)
+        btn_traducir = st.button("🔄 Traducir oracion", key="btn_traducir", use_container_width=True)
     with col_btn_voz:
         btn_voz = st.button("🎤 Escuchar y transcribir voz", key="btn_voz", use_container_width=True)
+    with col_btn_multi:
+        btn_multi = st.button("🔄 Traducir palabra", key="btn_multi", use_container_width=True)
+
+    if btn_multi:
+        palabra = texto_entrada.strip().split()[0] if texto_entrada.strip() else ""
+        if not palabra:
+            st.markdown('<div style="background:#f5f3ec; color:#9E693E; border-left:5px solid #B6A886; padding:1em 1em; border-radius:10px; margin-bottom:1em; font-size:1.05em;">Por favor, ingresa una palabra para ver sus traducciones.</div>', unsafe_allow_html=True)
+            st.session_state["traduccion"] = ""
+        else:
+            traducciones = buscar_todas_traducciones(palabra)
+            if traducciones:
+                st.session_state["traduccion"] = ", ".join(traducciones)
+            else:
+                st.session_state["traduccion"] = ""
+                st.markdown('<div style="background:#f5f3ec; color:#9E693E; border-left:5px solid #B6A886; padding:1em 1em; border-radius:10px; margin-bottom:1em; font-size:1.05em;">No se encontraron traducciones para esa palabra.</div>', unsafe_allow_html=True)
     if btn_traducir:
         if texto_entrada.strip() == "":
             st.warning("Por favor, ingresa una oración para traducir.")
@@ -281,12 +339,29 @@ with col_centro:
     # Cuadro de traducción alineado y centrado
     traduccion = st.session_state["traduccion"] if "traduccion" in st.session_state else ""
     st.markdown('<div style="max-width:400px; margin:0 auto;">', unsafe_allow_html=True)
+    st.markdown(
+        '<div style="color:#9E693E; font-size:2em; font-weight:bold; text-align:center; margin-bottom:0.2em;">'
+        'Traducción:'
+        '</div>',
+        unsafe_allow_html=True
+    )
     st.text_area(
-        "Traducción:",
+        label="",  # Sin label nativo
         value=traduccion,
         height=80,
         key="traduccion_area",
-        disabled=True
+        disabled=True,
+    )
+    st.markdown(
+        '<style>'
+        '.stTextArea textarea#traduccion_area { color: #000000 !important; }'
+        '.stTextArea textarea[disabled], .stTextArea textarea:disabled {'
+        'color: #000000 !important;'
+        'opacity: 1 !important;'
+        '-webkit-text-fill-color: #000000 !important;'
+        '}'
+        '</style>',
+        unsafe_allow_html=True
     )
     st.markdown('</div>', unsafe_allow_html=True)
 

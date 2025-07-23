@@ -57,6 +57,21 @@ def buscar_traduccion_palabra(lema_es: str) -> Optional[str]:
     conn.close()
     return row["raiz"] if row else None
 
+def buscar_todas_traducciones(lema_es: str) -> List[str]:
+    conn = conectar_bd()
+    cur = conn.cursor(dictionary=True)
+    cur.execute("""
+        SELECT pk.raiz
+        FROM palabra_es pe
+        JOIN traduccion t ON pe.id = t.palabra_es_id
+        JOIN palabra_ki pk ON pk.id = t.palabra_ki_id
+        WHERE pe.lema = %s
+    """, (lema_es,))
+    traducciones = [row["raiz"] for row in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return traducciones
+
 def buscar_morfema_desde_frase(frase_es: str) -> Optional[Dict]:
     conn = conectar_bd()
     cur = conn.cursor(dictionary=True)
